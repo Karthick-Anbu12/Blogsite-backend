@@ -5,10 +5,10 @@ const jwt = require("jsonwebtoken")
 const mongoose = require("mongoose")
 const { MongoClient, ObjectId } = require("mongodb")
 const dotenv = require("dotenv")
+const app = express()
 app.use(cors({
   origin: '*'
 }))
-const app = express()
 const secretkey = "jhwgdqg2yt1771t827y891hbdjshbjdhskn"
 const url = "mongodb+srv://karthickleo2121:uidb1nE49Iy0VlnS@blogsite.hl5qnhz.mongodb.net/blogdb?retryWrites=true&w=majority&appName=blogsite"
 mongoose.connect(url).then(() => {
