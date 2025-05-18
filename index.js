@@ -7,7 +7,7 @@ const { MongoClient, ObjectId } = require("mongodb")
 const dotenv = require("dotenv")
 const app = express()
 app.use(cors({
-  origin: '*'
+    origin: 'http://localhost:5173'
 }))
 const secretkey = "jhwgdqg2yt1771t827y891hbdjshbjdhskn"
 const url = "mongodb+srv://karthickleo2121:uidb1nE49Iy0VlnS@blogsite.hl5qnhz.mongodb.net/blogdb?retryWrites=true&w=majority&appName=blogsite"
@@ -22,19 +22,17 @@ const userSchema = new mongoose.Schema({
     name: String,
     email: String,
     password: String,
-    createdAt: Date,
-    blog: [],
-
+    createdAt: String
 })
 const blogschema = new mongoose.Schema({
     title: String,
     category: String, // e.g., "Career", "Finance", "Travel"
-    author: String, // populated from user data
+    author: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // populated from user data
     content: String,
     image: String, // optional URL
     userId: ObjectId, // references User
-    createdAt: Date,
-    updatedAt: Date
+    createdAt: String,
+    updatedAt: String
 
 })
 //Json Web Token
@@ -49,17 +47,20 @@ let authenticate = (req, res, next) => {
             }
             req.userid = data.id
             next();
+
         })
     }
 }
 const User = mongoose.model("User", userSchema, 'User')
+const Blogs = mongoose.model("Blogs", blogschema, 'Blogs')
+
 //user data
-app.get("/auth/user", async (req, res) => {
+app.get("/auth/user", authenticate, async (req, res) => {
     const client = new MongoClient(url);
     try {
         await client.connect();
         const collection = client.db().collection("User");
-        const result = await collection.findOne({});
+        const result = await collection.findOne({ _id: new ObjectId(req.userid) });
         res.json(result)
     } catch (error) {
         console.error("Error fetching data: ", error);
@@ -83,7 +84,8 @@ app.post("/auth/login", async (req, res) => {
             return res.status(401).json({ message: "Invalid credentials " })
         }
         const token = jwt.sign({ id: user._id }, secretkey)
-        res.json({ message: token })
+        res.json({ message: token, user })
+
     } catch (error) {
         console.error("Error fetching data: ", error);
     } finally {
@@ -93,10 +95,116 @@ app.post("/auth/login", async (req, res) => {
 })
 //Signup
 app.post("/auth/signup", async (req, res) => {
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     const salt = await bcrypt.genSalt(10)
     const hash = await bcrypt.hash(req.body.password, salt)
     req.body.password = hash;
+    const date = new Date();
+    const dd = date.getDate()
+    const mm = months[date.getMonth()]
+    const yy = date.getFullYear()
+    req.body.createdAt = mm + ' ' + dd + ',' + yy
     let data = new User(req.body);
     const result = await data.save();
     res.send(result).status(201);
 })
+//Post blog
+app.post("/blogs", authenticate, async (req, res) => {
+    const client = new MongoClient(url);
+    try {
+        const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        await client.connect();
+        const collection = client.db().collection("Blogs");
+        const userId = new ObjectId(`${req.userid}`)
+        const date = new Date();
+        const dd = date.getDate()
+        const mm = months[date.getMonth()]
+        const yy = date.getFullYear()
+        req.body.userId = userId;
+        req.body.author = userId;
+        req.body.createdAt = mm + ' ' + dd + ',' + yy;
+        const blog = await collection.insertOne(req.body)
+        if (blog) {
+            res.json(blog);
+            res.status(201).json({ message: "Blog added" })
+        }
+
+
+    } catch (error) {
+        console.error("Error fetching data: ", error);
+    } finally {
+        // Close the connection to the MongoDB cluster
+        await client.close();
+    }
+})
+//Get blogs
+app.get("/blogs", authenticate, async (req, res) => {
+    const client = new MongoClient(url);
+    try {
+        await client.connect();
+        const collection = client.db().collection("Blogs");
+        const result = await Blogs.find({}).populate("author", "name")
+        res.json(result)
+    } catch (error) {
+        console.error("Error fetching data: ", error);
+    } finally {
+        await client.close();
+    }
+})
+//Delete Blogs
+app.delete("/blogs/:id", authenticate, async (req, res) => {
+    const client = new MongoClient(url);
+    try {
+        await client.connect();
+        const collection = client.db().collection("Blogs");
+        const result = await collection.deleteOne({ _id: new ObjectId(req.params.id) })
+        res.status(204)
+        res.json({ message: "Blog deleted" })
+    } catch (error) {
+        console.error("Error fetching data: ", error);
+    } finally {
+        // Close the connection to the MongoDB cluster
+        await client.close();
+    }
+})
+//Update blog
+app.put("/blogs/:id", authenticate, async (req, res) => {
+    const client = new MongoClient(url);
+    try {
+        await client.connect();
+        const collection = client.db().collection("Blogs");
+        const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        const date = new Date();
+        const dd = date.getDate()
+        const mm = months[date.getMonth()]
+        const yy = date.getFullYear()
+        req.body.updatedAt = mm + ' ' + dd + ',' + yy;
+        const { _id, ...updateFields } = req.body
+        await collection.findOneAndUpdate({ _id: new ObjectId(`${req.params.id}`) }, { $set: updateFields })
+        res.status(204).json({ message: "Blog Updated" })
+
+    } catch (error) {
+        console.error("Error fetching data: ", error);
+    } finally {
+        // Close the connection to the MongoDB cluster
+        await client.close();
+    }
+})
+//Get single blog
+app.get("/blogs/:id", authenticate, async (req, res) => {
+    const client = new MongoClient(url);
+    try {
+        await client.connect();
+        const collection = client.db().collection("Blogs");
+        const result = await collection.findOne({ _id: new ObjectId(req.params.id) })
+        if (result) {
+            res.json(result)
+        }
+    } catch (error) {
+        console.error("Error fetching data: ", error);
+    } finally {
+        // Close the connection to the MongoDB cluster
+        await client.close();
+    }
+})
+
