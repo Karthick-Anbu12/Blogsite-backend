@@ -5,12 +5,13 @@ const jwt = require("jsonwebtoken")
 const mongoose = require("mongoose")
 const { MongoClient, ObjectId } = require("mongodb")
 const dotenv = require("dotenv")
+dotenv.config()
 const app = express()
 app.use(cors({
-    origin: 'http://localhost:5173'
+    origin: '*'
 }))
-const secretkey = "jhwgdqg2yt1771t827y891hbdjshbjdhskn"
-const url = "mongodb+srv://karthickleo2121:uidb1nE49Iy0VlnS@blogsite.hl5qnhz.mongodb.net/blogdb?retryWrites=true&w=majority&appName=blogsite"
+const secretkey = process.env.SECREYKEY
+const url = process.env.DB
 mongoose.connect(url).then(() => {
     console.log("Database connected successfully.");
     app.listen(3000, () => {
@@ -106,7 +107,8 @@ app.post("/auth/signup", async (req, res) => {
     req.body.createdAt = mm + ' ' + dd + ',' + yy
     let data = new User(req.body);
     const result = await data.save();
-    res.send(result).status(201);
+    res.send(result)
+    res.status(201);
 })
 //Post blog
 app.post("/blogs", authenticate, async (req, res) => {
