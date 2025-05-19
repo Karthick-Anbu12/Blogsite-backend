@@ -8,10 +8,10 @@ const dotenv = require("dotenv")
 dotenv.config()
 const app = express()
 app.use(cors({
-    origin: '*'
+    origin: 'https://delightful-squirrel-a83013.netlify.app'
 }))
 const secretkey = process.env.SECREYKEY
-const url = process.env.DB
+const url = process.env.URL
 mongoose.connect(url).then(() => {
     console.log("Database connected successfully.");
     app.listen(3000, () => {
