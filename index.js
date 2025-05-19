@@ -10,7 +10,7 @@ const app = express()
 app.use(cors({
     origin: 'https://delightful-squirrel-a83013.netlify.app'
 }))
-const secretkey = process.env.SECREYKEY
+const secretkey = process.env.SECRETKEY
 const url = process.env.URL
 mongoose.connect(url).then(() => {
     console.log("Database connected successfully.");
